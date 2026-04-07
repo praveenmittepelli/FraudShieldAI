@@ -1,0 +1,19 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Data and Machine Learning Files
+*.csv
+*.joblib
+*.keras
+*.h5
+*.pkl
+src/data/
+saved_models/
