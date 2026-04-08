@@ -1,20 +1,30 @@
 """
-Hybrid Ensemble module.
+Hybrid Ensemble Model Module.
 
-Orchestrates the binding of disparate model architectures (Supervised vs Deep Learning,
-Standard vs Sequential) via a weighted soft-voting structure to optimize the final 
-probability of fraudulent behavior.
+This architectural component orchestrates the binding of disparate model structures 
+(Classical Scikit-Learn algorithms, XGBoost, and Deep Learning Sequences) 
+via a weighted soft-voting matrix to optimize the final classification of extreme fraud events.
 """
 
 import numpy as np
 
 class HybridEnsemble:
+    """
+    Manages predictions from individual distinct architectures and merges them together, 
+    accounting for mismatched sequence shapes and confidence offsets.
+    """
     def __init__(self, weights=None):
         """
-        Initializes the Hybrid Ensemble.
-        :param weights: A dictionary mapping model names to their weights in the soft voting ensemble.
+        Initializes the Hybrid Ensemble orchestration container.
+        
+        Args:
+            weights (dict): A dictionary explicitly mapping model names to their importance 
+                            weights in the final soft voting ensemble score. 
+                            If none provided, defaults exist.
         """
-        # Default weighting: prioritize more robust models.
+        # Default weighting matrix: 
+        # Deep Learning comprises 40% (FNN 20%, LSTM 20%) while 
+        # Decision Trees comprises 50% (XGBoost 30%, RF 20%).
         self.weights = weights or {
             'LogisticRegression': 0.1,
             'RandomForest': 0.2,
@@ -25,16 +35,19 @@ class HybridEnsemble:
 
     def predict_proba(self, all_probas, sequence_indices=None):
         """
-        Combines probabilities from multiple models.
+        Combines probabilities functionally across multi-variate shape matrices.
         
-        :param all_probas: Dictionary mapping model name to an array of predicted probabilities.
-        :param sequence_indices: If sequence models (e.g., LSTM) produce fewer predictions 
-                                 due to windowing, this array specifies which rows in the 
-                                 standard tabular data they correspond to. 
-                                 If None, assumes all arrays are the same length.
+        Args:
+            all_probas (dict): Directory mapping model labels to numpy arrays of predicted fraud scores.
+            sequence_indices (np.ndarray): LSTM models use rolling sequence arrays. If seq_length=5, 
+                                           the first 4 targets are dropped. Sequences_indices specifies 
+                                           which robust row corresponds to which tabular element.
+                                           
+        Returns:
+            np.ndarray: Unified risk score matrix matched sequentially per row.
         """
-        # Determine the number of standard samples based on LogisticRegression (or any standard model)
-        standard_model_name = next(iter(all_probas.keys())) # Grab first model length
+        # Establish base structural constraints driven from a 'standard' tabular output shape
+        standard_model_name = next(iter(all_probas.keys())) 
         n_samples = len(all_probas[standard_model_name])
         
         combined_scores = np.zeros(n_samples)
@@ -43,28 +56,41 @@ class HybridEnsemble:
         for name, probas in all_probas.items():
             weight = self.weights.get(name, 0)
             if weight == 0:
+                # Do not calculate null-weighted trees
                 continue
                 
-            # Handle sequence models which might have fewer predictions
+            # If sequence arrays are mismatched in size from standard arrays
             if len(probas) < n_samples and sequence_indices is not None:
                 aligned_probas = np.zeros(n_samples)
                 aligned_probas[sequence_indices] = probas
-                # Alternatively, pad the beginning if simply sliced without indices map
+                probas = aligned_probas
                 
-                # For simplicity in this implementation, if it's the exact diff of seq_length
-                # we just pad the beginning with the mean or 0, or just align indices
+            # Naive fallback: Simple truncation padding calculation assuming the 
+            # delta loss exists directly at the array origin (start)
             elif len(probas) < n_samples:
-                # Assuming simple sliding window truncation at the beginning
                 diff = n_samples - len(probas)
+                # Pad the missing introductory transactions with the model mean to prevent wild variance shifts
                 aligned_probas = np.pad(probas, (diff, 0), 'constant', constant_values=np.mean(probas))
                 probas = aligned_probas
                 
+            # Accumulate the weighted product sum
             combined_scores += probas * weight
             total_weight += weight
             
+        # Return probability distributed between 0 and 1
         return combined_scores / total_weight
 
     def predict(self, all_probas, threshold=0.5, sequence_indices=None):
-        """Returns binary predictions based on the chosen threshold."""
+        """
+        Maps probability bounds explicitly to binary deterministic classifications.
+        
+        Args:
+            all_probas (dict): Base dictionaries holding arrays of probabilities.
+            threshold (float): Decision bound limit. Default standard is 50%.
+            sequence_indices (np.ndarray): Pointers for LSTM mapping structure.
+            
+        Returns:
+            np.ndarray: Binary array denoting 0 (Genunine) or 1 (Fraudulent).
+        """
         combined_scores = self.predict_proba(all_probas, sequence_indices)
         return (combined_scores >= threshold).astype(int)

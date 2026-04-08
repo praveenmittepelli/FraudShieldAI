@@ -1,9 +1,9 @@
 """
-Evaluation utilities module.
+Evaluation Visualization & Reporting Module.
 
-Provides standardized evaluation metrics specifically targeted towards highly imbalanced
-datasets (using PR-AUC instead of standard ROC-AUC) and visualization tools like 
-confusion matrices and Precision-Recall plots.
+Calculates stringent statistics regarding Imbalanced Detection mapping.
+In fraud detection, general Accuracy is useless (a model predicting '0' constantly achieves 99% accuracy).
+This module heavily emphasizes Precision/Recall curves, F1-Scores, and confusion matrices instead.
 """
 
 import matplotlib.pyplot as plt
@@ -21,21 +21,21 @@ import numpy as np
 
 def evaluate_predictions(y_true, y_pred, y_prob=None, model_name="Model", save_dir=None):
     """
-    Evaluates predictions and prints standard metrics for imbalanced datasets.
+    Evaluates absolute mathematical predictions against ground truth limits and establishes bounds.
     
     Args:
-        y_true: True binary labels.
-        y_pred: Predicted binary labels.
-        y_prob: Predicted probabilities for the positive class (optional).
-        model_name: Name of the model for display purposes.
-        save_dir: Directory to optionally save the classification report.
+        y_true (np.ndarray): True physical dataset labels (1=Fraud, 0=Genuine).
+        y_pred (np.ndarray): Binary evaluated system labels dictating a specific cut-off threshold.
+        y_prob (np.ndarray, optional): Uncapped numeric probabilities describing raw output.
+        model_name (str): The logical system identifier mapped to logs.
+        save_dir (str, optional): Physical absolute or relative filesystem directory to push exported `.txt` outputs.
         
     Returns:
-        dict: A dictionary containing the evaluation metrics.
+        dict: Standard metric numerical aggregates compiled securely.
     """
     print(f"--- Evaluation for {model_name} ---")
     
-    # Standard threshold metrics
+    # Calculate macro thresholds while enforcing fallback protections
     precision = precision_score(y_true, y_pred, zero_division=0)
     recall = recall_score(y_true, y_pred, zero_division=0)
     f1 = f1_score(y_true, y_pred, zero_division=0)
@@ -44,9 +44,12 @@ def evaluate_predictions(y_true, y_pred, y_prob=None, model_name="Model", save_d
     print(f"Recall:    {recall:.4f}")
     print(f"F1-Score:  {f1:.4f}")
     print("\nClassification Report:")
+    
+    # The classification_report method yields detailed breakdowns separated independently by True class types
     report = classification_report(y_true, y_pred, zero_division=0)
     print(report)
     
+    # Synchronize textual export mechanism natively ensuring persistence
     if save_dir:
         import os
         os.makedirs(save_dir, exist_ok=True)
@@ -65,12 +68,13 @@ def evaluate_predictions(y_true, y_pred, y_prob=None, model_name="Model", save_d
         'f1': f1,
     }
     
-    # PR-AUC if probabilities are provided
+    # If unscaled outputs apply, dynamically construct PR-AUC
     if y_prob is not None:
         pr_auc = calculate_pr_auc(y_true, y_prob)
         print(f"PR-AUC:    {pr_auc:.4f}")
         metrics['pr_auc'] = pr_auc
         
+        # Append AUC calculations explicitly backwards into the logged object structure
         if save_dir:
             import os
             report_path = os.path.join(save_dir, f'classification_report_{model_name.lower()}.txt')
@@ -80,17 +84,26 @@ def evaluate_predictions(y_true, y_pred, y_prob=None, model_name="Model", save_d
     return metrics
 
 def calculate_pr_auc(y_true, y_prob):
-    """Calculates the Precision-Recall Area Under Curve (PR-AUC)."""
+    """
+    Safely calculates the normalized Area Under Curve representation representing Precision vs Recall trade-offs.
+    """
     precision, recall, _ = precision_recall_curve(y_true, y_prob)
     return auc(recall, precision)
 
 def plot_confusion_matrix(y_true, y_pred, model_name="Model", save_path=None):
     """
-    Plots a confusion matrix using Seaborn.
+    Generates a localized visual heatmap representation denoting false positives vs true negatives securely metrics.
+    
+    Args:
+        y_true (np.ndarray): Truth vector.
+        y_pred (np.ndarray): Bounded array.
+        model_name (str): Identifer overlay mapping.
+        save_path (str, optional): Outfile path.
     """
     cm = confusion_matrix(y_true, y_pred)
     
     plt.figure(figsize=(6, 5))
+    # Utilize Seaborn mapped colors directly via Matplotlib instance context wrappers
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
                 xticklabels=['Not Fraud', 'Fraud'], 
                 yticklabels=['Not Fraud', 'Fraud'])
@@ -101,11 +114,12 @@ def plot_confusion_matrix(y_true, y_pred, model_name="Model", save_path=None):
     
     if save_path:
         plt.savefig(save_path)
-    plt.show()
+    # Note: plt.show ignores headless/deploy wrappers inherently
+    plt.close() # Close memory handle silently rather than render interactively
 
 def plot_precision_recall_curve(y_true, y_prob, model_name="Model", save_path=None):
     """
-    Plots the Precision-Recall curve.
+    Plots a standard PR Curve evaluating the system tradeoff. Useful for single isolated algorithm validation architectures.
     """
     precision, recall, _ = precision_recall_curve(y_true, y_prob)
     pr_auc = auc(recall, precision)
@@ -113,7 +127,7 @@ def plot_precision_recall_curve(y_true, y_prob, model_name="Model", save_path=No
     plt.figure(figsize=(8, 6))
     plt.plot(recall, precision, lw=2, label=f'{model_name} (PR-AUC = {pr_auc:.3f})')
     
-    # Add a No Skill baseline line
+    # Establish arbitrary 'No Skill' deterministic boundary tracking relative representation percentages
     no_skill = np.sum(y_true == 1) / len(y_true)
     plt.plot([0, 1], [no_skill, no_skill], linestyle='--', color='red', label='No Skill')
     
@@ -126,17 +140,18 @@ def plot_precision_recall_curve(y_true, y_prob, model_name="Model", save_path=No
     
     if save_path:
         plt.savefig(save_path)
-    plt.show()
+    plt.close()
 
 def evaluate_models_comparison(results_dict, y_true, save_dir=None, print_metrics=True):
     """
-    Evaluates and compares multiple models on a single plot.
+    Executes deep comparison evaluations aggregating massive plot overlays and optionally outputting local textual reports.
     
     Args:
-        results_dict: A dictionary of the format {'model_name': {'y_pred': array, 'y_prob': array}}
-        y_true: True binary labels
-        save_dir: directory to save the output visualizations
-        print_metrics: Whether to evaluate and print metrics for each model
+        results_dict (dict): Encapsulating master mapped structure defining properties for models. Structure format expected:
+                             {'AlgorithmStringDefinition': {'y_pred': [...], 'y_prob': [...]}}
+        y_true (np.ndarray): Truth labels.
+        save_dir (str): Base root location directory defining visual saves.
+        print_metrics (bool): Overwrite capability dictating if identical console printing runs recursively. 
     """
     import os
     
@@ -147,23 +162,23 @@ def evaluate_models_comparison(results_dict, y_true, save_dir=None, print_metric
         y_pred = result.get('y_pred')
         y_prob = result.get('y_prob')
         
-        # Print metrics to console
+        # Trigger internal calculations explicitly if flags are open
         if print_metrics:
             evaluate_predictions(y_true, y_pred, y_prob, model_name=name, save_dir=save_dir)
             print("\n")
         
-        # Plot individual Confusion Matrices
+        # Plot and save internal isolation matrices
         if y_pred is not None:
-            cm_path = os.path.join(save_dir, f'cm_{name}.png') if save_dir else None
+            cm_path = os.path.join(save_dir, f'cm_{name.lower()}.png') if save_dir else None
             plot_confusion_matrix(y_true, y_pred, model_name=name, save_path=cm_path)
             
-        # Plot to the shared PR Curve
+        # Draw explicit PR overlapping logic
         if y_prob is not None:
             precision, recall, _ = precision_recall_curve(y_true, y_prob)
             pr_auc = auc(recall, precision)
             plt.plot(recall, precision, lw=2, label=f'{name} (PR-AUC = {pr_auc:.3f})')
             
-    # Finalize and show shared PR Curve
+    # Compile base graphical overlays matching structure bounds for all algorithms loaded securely
     no_skill = np.sum(y_true == 1) / len(y_true)
     plt.plot([0, 1], [no_skill, no_skill], linestyle='--', color='black', label='No Skill')
     
@@ -175,4 +190,4 @@ def evaluate_models_comparison(results_dict, y_true, save_dir=None, print_metric
     
     if save_dir:
         plt.savefig(os.path.join(save_dir, 'pr_curve_comparison.png'))
-    plt.show()
+    plt.close()

@@ -1,31 +1,62 @@
+"""
+Deep Learning Training Module.
+
+Provides simplified configuration and execution wrappers surrounding TensorFlow/Keras.
+Defines complex structural sequence ingestion for Recurrent Neural Networks (LSTM) 
+as well as deeper nonlinear representations mapping via Dense Feed Forward layers (FNN).
+Handles Class Imbalance intrinsically via configured positive class weights.
+"""
+
 import numpy as np
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Reduce TF logs
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Explicitly reduce TF C++ logging spam
 
 import tensorflow as tf
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import Dense, Dropout, LSTM, BatchNormalization
 
 class DeepLearningTrainer:
+    """Class orchestrating initialization, compilation, and evaluation of DL networks."""
+    
     def __init__(self, model_type='fnn', input_dim=10, lr=0.001, epochs=5, batch_size=256, pos_weight=1.0):
+        """
+        Instantiates specific architecture configurations statically defining depth parameters.
+        
+        Args:
+            model_type (str): 'fnn' (Feed Forward) or 'lstm' (Long Short-Term Memory).
+            input_dim (int/tuple): Size bounding of expected feature shape.
+            lr (float): Adam optimization learning step bound.
+            epochs (int): Number of cyclic dataset passes.
+            batch_size (int): Optimization memory chunk limit.
+            pos_weight (float): Inverse density multiplier artificially inflating gradient responses for minority data types.
+        """
         self.epochs = epochs
         self.batch_size = batch_size
         self.model_type = model_type
         self.pos_weight = pos_weight
         
+        # Sequentially map internal models explicitly
         self.model = self._build_model(model_type, input_dim)
         
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
-        # We can implement sample weighting during fit, so we use standard BinaryCrossentropy
+        # Logarithmic Binary BinaryCrossentropy handles independent sample probability 
+        # evaluation efficiently within Keras
         self.model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy', tf.keras.metrics.AUC(name='auc')])
 
     def _build_model(self, model_type, input_dim):
+        """
+        Dynamically constructs neural sequence layers.
+        """
         model = Sequential()
         
         if model_type == 'fnn':
-            model.add(Dense(64, activation='relu', input_shape=(input_dim,)))
+            # FNN uses simplistic wide linear arrays
+            model.add(tf.keras.Input(shape=(input_dim,)))
+            model.add(Dense(64, activation='relu'))
+            # BatchNormaliztion handles internal covariant shifts naturally
             model.add(BatchNormalization())
-            model.add(Dropout(0.3))
+            # dropout randomly severs nodes specifically to fight deterministic overfitting
+            model.add(Dropout(0.3)) 
             
             model.add(Dense(32, activation='relu'))
             model.add(BatchNormalization())
@@ -34,23 +65,30 @@ class DeepLearningTrainer:
             model.add(Dense(1, activation='sigmoid'))
             
         elif model_type == 'lstm':
-            # input_dim for LSTM is expected to be a tuple (seq_len, num_features)
-            # but our signature passed scalar initially. Let me adapt to assume input_dim here is number of features,
-            # and input_shape is (None, input_dim) to allow flexible sequence lengths
-            model.add(LSTM(64, dropout=0.3, recurrent_dropout=0.3, input_shape=(None, input_dim)))
+            # LSTM explicitly accounts for rolling temporal variables to calculate patterns linearly
+            # Keras 3 Input layer mapping dynamically structures sequence bounds
+            model.add(tf.keras.Input(shape=(None, input_dim)))
+            model.add(LSTM(64, dropout=0.3, recurrent_dropout=0.3))
             model.add(Dense(32, activation='relu'))
             model.add(Dropout(0.3))
             model.add(Dense(1, activation='sigmoid'))
             
         else:
-            raise ValueError("model_type must be 'fnn' or 'lstm'")
+            raise ValueError("model_type must be strictly defined as 'fnn' or 'lstm'")
             
         return model
 
     def train(self, X_train, y_train):
+        """
+        Fits Neural layer mapping weights.
+        
+        Args:
+            X_train (np.ndarray): Fully processed tabular or structural components.
+            y_train (np.ndarray): Target vectors mapping values.
+        """
         print(f"Training {self.model_type.upper()} model using TensorFlow/Keras...")
         
-        # In Keras, we can pass class weights to handle imbalance directly
+        # class_weight handles imbalance securely mathematically within gradient adjustments
         class_weight = {0: 1.0, 1: self.pos_weight}
         
         self.model.fit(
@@ -62,16 +100,19 @@ class DeepLearningTrainer:
         )
 
     def predict_proba(self, X):
-        # Keras predict returns probabilities (batch, 1) directly for sigmoid output
+        """
+        Extracts sigmoidal 0->1 decimal responses bounded natively across the compiled network.
+        """
         preds = self.model.predict(X, batch_size=self.batch_size, verbose=0)
         return preds.flatten()
 
     def save_model(self, path):
-        # Keras models can be saved natively to .keras or directory
+        """Saves internal protobuf structural representations to .keras zips."""
         self.model.save(path)
 
     def load_model(self, path):
+        """Dynamically resurrects saved topologies from native states."""
         if os.path.exists(path):
             self.model = load_model(path)
         else:
-            raise FileNotFoundError(f"Model file {path} not found.")
+            raise FileNotFoundError(f"Model initialization failure file {path} heavily missing.")

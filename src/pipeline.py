@@ -1,3 +1,12 @@
+"""
+Pipeline Orchestration Module for FraudShieldAI.
+
+This module acts as the primary execution engine. It is responsible for loading the 
+dataset, applying comprehensive feature engineering, slicing sequences, and instantiating
+both the Deterministic Tree Models and the Sequence/Dense Neural Networks.
+Following training, it automatically triggers robust evaluations and logs all reports.
+"""
+
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -9,24 +18,37 @@ import os
 
 def create_sequences(df, target_col='is_fraud', seq_len=5):
     """
-    Creates temporal sequences for LSTM by cc_num.
-    Assumes df is already sorted chronologically per cc_num.
+    Creates temporal transaction sequences sequentially indexed by User ID.
+    
+    LSTM Models expect data in structures representing time. This logic takes tabular 
+    financial data and converts it into a rolling window sequence tensor (samples, time_steps, features).
+    
+    Args:
+        df (pd.DataFrame): The transformed chronologically sorted dataframe.
+        target_col (str): Truth label determining classification (default 'is_fraud').
+        seq_len (int): Rolling lag factor defining time-steps per memory chunk.
+    
+    Returns:
+        tuple: (np.ndarray of shape (X, 5, Features), np.ndarray of (X, 1) target labels)
     """
     sequences = []
     targets = []
     features = [c for c in df.columns if c not in [target_col, 'cc_num']]
     
+    # Isolate sequences rigidly by unqiue customer to prevent cross-customer data leakage
     for cc_num, group in df.groupby('cc_num'):
         user_data = group[features].values
         user_target = group[target_col].values
         
         if len(user_data) < seq_len:
+            # If the user has 3 transactions and the model needs 5, pad the remaining with pure zeroes.
             pad_size = seq_len - len(user_data)
             pad_data = np.zeros((pad_size, user_data.shape[1]))
             user_data = np.vstack([pad_data, user_data])
             targets.append(user_target[-1])
             sequences.append(user_data)
         else:
+            # Extract sliding overlapping windows using a simple iterator
             for i in range(len(user_data) - seq_len + 1):
                 window = user_data[i:i+seq_len]
                 target = user_target[i+seq_len-1]
@@ -35,9 +57,16 @@ def create_sequences(df, target_col='is_fraud', seq_len=5):
                 
     return np.array(sequences), np.array(targets)
 
+
 def main():
+    """
+    The orchestrator execution block.
+    
+    Runs automatically when pipeline.py is invoked via terminal.
+    Executes preprocessors, trains models, scores inferences, and exports visuals.
+    """
     print("Loading data...")
-    # Dynamic absolute pathing against CWD
+    # Utilize relative dynamic pathing to ensure platform-independent execution
     base_dir = os.path.dirname(os.path.abspath(__file__))
     data_path = os.path.join(base_dir, 'data', 'fraudTrain.csv')
     df = pd.read_csv(data_path)
@@ -48,7 +77,9 @@ def main():
     df_processed = fe.fit_transform(df, training=True)
     
     print("\nPreparing for Supervised...")
-    # Train test split on users to avoid data leak
+    # CRITICAL: We enforce a train_test_split on the `cc_num` column, NOT random rows!
+    # If we split securely by Users, we ensure the LSTM and velocity metrics don't
+    # accidentally bleed temporal knowledge about a user's future into the training set.
     unique_users = df_processed['cc_num'].unique()
     train_users, test_users = train_test_split(unique_users, test_size=0.2, random_state=42)
     
@@ -78,6 +109,7 @@ def main():
     # --- 2. DEEP LEARNING MODELS ---
     print("\n================== 2. DEEP LEARNING MODELS ==================")
     
+    # Train robust fully connected Feed Forward layers
     print("\nTraining FNN...")
     fnn = DeepLearningTrainer(model_type='fnn', input_dim=X_train.shape[1], epochs=3, batch_size=256, pos_weight=10.0)
     fnn.train(X_train.values, y_train)
@@ -89,6 +121,7 @@ def main():
     evaluate_predictions(y_test, fnn_pred, fnn_prob, model_name="FNN", save_dir='saved_models/')
     results_dict['FNN'] = {'y_pred': fnn_pred, 'y_prob': fnn_prob}
     
+    # Align Temporal Sequence Array Structure 
     print("\nPreparing Sequences for LSTM...")
     X_train_seq, y_train_seq = create_sequences(train_df, seq_len=5)
     
@@ -98,6 +131,7 @@ def main():
     lstm.save_model('saved_models/dl_lstm.keras')
     
     print("\nEvaluating LSTM...")
+    # Calculate separate independent structures
     X_test_seq, y_test_seq = create_sequences(test_df, seq_len=5)
     lstm_prob = lstm.predict_proba(X_test_seq)
     lstm_pred = (lstm_prob >= 0.5).astype(int)
@@ -106,8 +140,8 @@ def main():
     # --- 3. FINAL COMPARISON ---
     print("\n================== 3. FINAL COMPARISON ==================")
     os.makedirs('plots', exist_ok=True)
-    # Generates a comparison PR curve for all models sharing the same y_test
-    # print_metrics=False prevents re-evaluating and re-logging metrics/reports
+    # Generates a comparison PR curve for all models sharing the same y_test matrix natively
+    # print_metrics=False forcibly overrides duplicate terminal prints from populating
     evaluate_models_comparison(results_dict, y_test, save_dir='plots/', print_metrics=False)
     
     print("\nPipeline Complete. Models/reports saved to 'saved_models/' and plots saved to 'plots/'.")
