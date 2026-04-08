@@ -1,3 +1,13 @@
+---
+title: FraudShieldAI
+emoji: 🛡️
+colorFrom: blue
+colorTo: indigo
+sdk: gradio
+app_file: app.py
+pinned: false
+---
+
 # 🛡️ FraudShieldAI
 
 FraudShieldAI is an end-to-end Machine Learning pipeline and web application for real-time credit card fraud detection. It uses a hybrid ensemble of Classical Machine Learning models (Logistic Regression, Random Forest, XGBoost) alongside Deep Learning networks (FNN, LSTM) to combat extreme class imbalance and identify complex fraudulent sequential and static data patterns.
