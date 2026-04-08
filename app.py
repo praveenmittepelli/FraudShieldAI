@@ -107,7 +107,7 @@ def fraud_chatbot(message, history):
         
 
 # --- GUI Initialization ---
-with gr.Blocks(theme=gr.themes.Soft()) as app:
+with gr.Blocks() as app:
     gr.Markdown("# 🛡️ FraudShield AI: Enterprise Detection Platform")
     gr.Markdown("Upload batch transaction logs for AI risk scoring, or consult the Analyst Chatbot.")
     
@@ -141,4 +141,4 @@ with gr.Blocks(theme=gr.themes.Soft()) as app:
 
 # Required execution block 
 if __name__ == "__main__":
-    app.launch(server_name="127.0.0.1")
+    app.launch(server_name="127.0.0.1", theme=gr.themes.Soft())
