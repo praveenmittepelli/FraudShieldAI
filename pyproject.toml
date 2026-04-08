@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "category-encoders>=2.9.0",
+    "gdown>=5.2.1",
     "geopy>=2.4.1",
     "gradio>=6.11.0",
     "imbalanced-learn>=0.14.1",

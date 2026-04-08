@@ -35,6 +35,26 @@ def main():
     print("Loading data...")
     base_dir = os.path.dirname(os.path.abspath(__file__))
     data_path = os.path.join(base_dir, 'data', 'fraudTrain.csv')
+    
+    if not os.path.exists(data_path):
+        print(f"Data file not found at {data_path}.")
+        gdrive_url = input("Please enter the Google Drive sharing URL to download the dataset (or press Enter to skip): ").strip()
+        if gdrive_url:
+            try:
+                import gdown
+                print("Downloading dataset from Google Drive (this may take a moment)...")
+                os.makedirs(os.path.dirname(data_path), exist_ok=True)
+                gdown.download(gdrive_url, data_path, quiet=False, fuzzy=True)
+            except ImportError:
+                print("Error: The 'gdown' package is required to download from Google Drive.")
+                print("Please install it by opening a new terminal and running: uv add gdown")
+                sys.exit(1)
+            except Exception as e:
+                print(f"Failed to download from Google Drive: {e}")
+                sys.exit(1)
+        else:
+            print("No URL provided. The pipeline may fail if the data file is missing.")
+            
     df = pd.read_csv(data_path)
     
     print(f"Data Shape: {df.shape}")
