@@ -44,7 +44,15 @@ Navigate your browser to `http://127.0.0.1:7860`.
 
 Deploying your Gradio app to Hugging Face Spaces securely allows you to host the interface without exposing it, your models, or your data to the public. 
 
+### Prerequisites
+- Git LFS installed (`brew install git-lfs`)
+- `uv` installed (`curl -LsSf https://astral.sh/uv/install.sh | sh` or `brew install uv` on macOS)
+- Hugging Face account
+- Hugging Face CLI installed (`pip install huggingface_hub`)
+- Hugging Face token (`huggingface-cli login`)
+
 ### Step 1: Export Dependencies
+
 Hugging Face defaults to reading a standard `requirements.txt` file when spinning up the environment container. Export your `uv` environment so Hugging Face can install the correct packages:
 ```bash
 uv pip compile pyproject.toml -o requirements.txt
