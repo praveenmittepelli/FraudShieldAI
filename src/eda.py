@@ -1,3 +1,12 @@
+"""
+Exploratory Data Analysis (EDA) Module.
+
+Generates insightful visualizations to contextualize the severe class imbalance,
+transaction amount distributions, temporal (time-of-day) trends, and feature 
+correlations inherent to the financial tabular data. All artifacts are saved to a 
+designated output directory.
+"""
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,6 +18,13 @@ import os
 plt_sns.set_theme(style="whitegrid", context="talk")
 
 def main():
+    """
+    Main routine for the EDA pipeline.
+    
+    Reads the target dataset, evaluates basic missing properties, and orchestrates 
+    the generation of multiple Seaborn / Matplotlib plots to visually represent 
+    the underlying fraud structures.
+    """
     if len(sys.argv) < 2:
         print("Usage: python src/eda.py <output_dir>")
         sys.exit(1)

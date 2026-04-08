@@ -45,7 +45,14 @@ class DeepLearningTrainer:
 
     def _build_model(self, model_type, input_dim):
         """
-        Dynamically constructs neural sequence layers.
+        Dynamically constructs neural sequence layers based on specification.
+        
+        Args:
+            model_type (str): Topology identifier ('fnn' or 'lstm').
+            input_dim (int): Count of input features per row.
+            
+        Returns:
+            tf.keras.Model: Uncompiled Keras Sequential tensor structure.
         """
         model = Sequential()
         
@@ -102,16 +109,35 @@ class DeepLearningTrainer:
     def predict_proba(self, X):
         """
         Extracts sigmoidal 0->1 decimal responses bounded natively across the compiled network.
+        
+        Args:
+            X (np.ndarray): Inference inputs (either 2D tabular or 3D temporal sequences).
+            
+        Returns:
+            np.ndarray: Unified flat 1D array computing threat likelihood ratios.
         """
         preds = self.model.predict(X, batch_size=self.batch_size, verbose=0)
         return preds.flatten()
 
     def save_model(self, path):
-        """Saves internal protobuf structural representations to .keras zips."""
+        """
+        Saves internal protobuf structural representations to .keras zips.
+        
+        Args:
+            path (str): Destination file path (e.g., 'model.keras').
+        """
         self.model.save(path)
 
     def load_model(self, path):
-        """Dynamically resurrects saved topologies from native states."""
+        """
+        Dynamically resurrects saved topologies from native states.
+        
+        Args:
+            path (str): Initialized file path storing model states structurally.
+            
+        Raises:
+            FileNotFoundError: If the model file is absent from the disk structure.
+        """
         if os.path.exists(path):
             self.model = load_model(path)
         else:
